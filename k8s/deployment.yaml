@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-api
+  namespace: marketly
+  labels:
+    app: inventory-api
+    tier: api
+  annotations:
+    sentinel.io/repo: "marketly-org/inventory-api"
+    sentinel.io/branch: "main"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: inventory-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: inventory-api
+        tier: api
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/marketly-org/inventory-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: INVENTORY_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: marketly-db-credentials
+                  key: inventory-url
+            - name: PORT
+              value: "8080"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
