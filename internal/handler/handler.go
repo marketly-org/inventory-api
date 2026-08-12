@@ -49,6 +49,10 @@ func (h *Handler) handleProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(r.URL.Path) <= len("/products/") {
+		http.Error(w, "sku required", http.StatusBadRequest)
+		return
+	}
 	sku := r.URL.Path[len("/products/"):]
 	if sku == "" {
 		http.Error(w, "sku required", http.StatusBadRequest)
