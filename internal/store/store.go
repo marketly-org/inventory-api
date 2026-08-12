@@ -1,18 +1,13 @@
 // Package store provides the Postgres persistence layer for inventory.
-//
-// BUG: The Reserve method reads product.Stock and product.Reserved in
 // one query, checks availability in Go, then writes Reserved += qty in
 // a second query. This read-then-write is NOT atomic — two concurrent
 // requests for the last item both see stock=1, both pass the check,
 // both reserve. Stock goes negative.
-//
 // The fix is to use a single UPDATE statement with a WHERE clause that
 // checks availability atomically:
-//
 //	UPDATE products
 //	SET reserved = reserved + $1
 //	WHERE sku = $2 AND stock - reserved >= $1
-//
 // If the UPDATE affects 0 rows, the reservation failed (insufficient
 // stock). This is both correct under concurrency and faster (one query
 // instead of two).
@@ -115,14 +110,10 @@ func (s *Store) GetProduct(ctx context.Context, sku string) (*models.Product, er
 }
 
 // Reserve increments the Reserved counter for a product.
-//
-// BUG: This implementation reads stock + reserved in one query, checks
 // availability in Go, then writes the new reserved value in a second
 // query. Under concurrent requests, two goroutines can both read
 // stock=1, reserved=0, both pass the check, and both write reserved=1.
 // The product is now oversold — confirmed later as negative stock.
-//
-// The fix is a single atomic UPDATE:
 //   UPDATE products SET reserved = reserved + $1
 //   WHERE sku = $2 AND stock - reserved >= $1
 // Then check rowsAffected — 0 means insufficient stock.
