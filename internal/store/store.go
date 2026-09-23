@@ -1,16 +1,4 @@
 // Package store provides the Postgres persistence layer for inventory.
-// one query, checks availability in Go, then writes Reserved += qty in
-// a second query. This read-then-write is NOT atomic — two concurrent
-// requests for the last item both see stock=1, both pass the check,
-// both reserve. Stock goes negative.
-// The fix is to use a single UPDATE statement with a WHERE clause that
-// checks availability atomically:
-//	UPDATE products
-//	SET reserved = reserved + $1
-//	WHERE sku = $2 AND stock - reserved >= $1
-// If the UPDATE affects 0 rows, the reservation failed (insufficient
-// stock). This is both correct under concurrency and faster (one query
-// instead of two).
 package store
 
 import (
